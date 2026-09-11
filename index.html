@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>王旭 - 赛博个人档案</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root {
+            --bg-deep: #010302;
+            --neon-green: #00ff41;
+            --neon-cyan: #00f3ff;
+            --text-main: #d1fae5;
+            --text-dim: #6ee7b7;
+            --glass-bg: rgba(0, 10, 5, 0.85); /* 加深背景确保代码雨不干扰阅读 */
+            --glass-border: rgba(0, 255, 65, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Space Grotesk', 'Microsoft YaHei', sans-serif;
+            overflow-x: hidden;
+            line-height: 1.6;
+            cursor: crosshair;
+        }
+
+        /* 全局 CRT 扫描线与微弱网格 */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: 
+                linear-gradient(rgba(0, 255, 65, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 65, 0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.4) 3px, transparent 4px);
+            z-index: 2;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        /* Three.js 画布 */
+        #webgl-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 0;
+        }
+
+        /* 鼠标光效 */
+        .cursor-glow {
+            position: fixed;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0, 255, 65, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+            mix-blend-mode: screen;
+        }
+
+        /* 主体容器 */
+        .container {
+            position: relative;
+            z-index: 4;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        /* 头部区域 */
+        .hero {
+            text-align: center;
+            margin-bottom: 60px;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .hero h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 5rem;
+            font-weight: 900;
+            letter-spacing: 12px;
+            text-transform: uppercase;
+            color: transparent;
+            -webkit-text-stroke: 2px var(--neon-green);
+            text-shadow: 0 0 20px rgba(0, 255, 65, 0.6), 0 0 40px rgba(0, 255, 65, 0.4);
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .hero h1::after {
+            content: 'WANG XU';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            color: var(--neon-green);
+            -webkit-text-stroke: 0;
+            animation: glitch 2s infinite linear alternate-reverse;
+            clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+            opacity: 0.8;
+        }
+
+        .hero .subtitle {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            color: var(--neon-cyan);
+            letter-spacing: 6px;
+            text-shadow: 0 0 10px var(--neon-cyan);
+            margin-bottom: 30px;
+        }
+
+        .status-bar {
+            display: inline-flex;
+            gap: 20px;
+            background: rgba(0, 255, 65, 0.05);
+            border: 1px solid var(--neon-green);
+            padding: 10px 30px;
+            border-radius: 4px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            color: var(--neon-green);
+            box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.1), 0 0 15px rgba(0, 255, 65, 0.2);
+            backdrop-filter: blur(5px);
+        }
+
+        .status-item { display: flex; align-items: center; gap: 8px; }
+        .status-dot {
+            width: 8px; height: 8px;
+            background: var(--neon-green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--neon-green);
+            animation: pulse 1.5s infinite;
+        }
+
+        /* 网格布局 */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 40px;
+        }
+
+        /* 赛博卡片 */
+        .cyber-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            position: relative;
+            padding: 30px;
+            clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            margin-bottom: 30px;
+        }
+
+        .cyber-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 1px solid transparent;
+            background: linear-gradient(45deg, var(--neon-green), transparent, var(--neon-cyan)) border-box;
+            -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .cyber-card:hover {
+            transform: translateY(-5px) scale(1.01);
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.2), inset 0 0 20px rgba(0, 243, 255, 0.1);
+            border-color: var(--neon-cyan);
+        }
+
+        .card-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
+            color: var(--neon-green);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px rgba(0, 255, 65, 0.5);
+        }
+
+        .card-title::before {
+            content: '>';
+            color: var(--neon-cyan);
+            font-weight: bold;
+        }
+
+        /* 个人信息 */
+        .info-list { list-style: none; display: flex; flex-direction: column; gap: 15px; }
+        .info-list li {
+            display: flex; justify-content: space-between;
+            border-bottom: 1px dashed rgba(0, 255, 65, 0.2);
+            padding-bottom: 8px; font-size: 0.95rem;
+        }
+        .info-label { color: var(--text-dim); font-family: 'Orbitron', sans-serif; }
+        .info-value { color: #fff; font-weight: 500; text-align: right; }
+
+        /* 技能矩阵 */
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 10px;
+        }
+        .skill-item {
+            background: rgba(0, 255, 65, 0.05);
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            color: var(--neon-green);
+            padding: 8px 12px; font-size: 0.85rem; text-align: center;
+            font-family: 'Orbitron', sans-serif; transition: all 0.3s;
+            position: relative; overflow: hidden;
+        }
+        .skill-item::after {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 65, 0.3), transparent);
+            transition: left 0.5s;
+        }
+        .skill-item:hover {
+            background: var(--neon-green); color: #000;
+            box-shadow: 0 0 15px var(--neon-green); font-weight: bold;
+        }
+        .skill-item:hover::after { left: 100%; }
+
+        /* 时间轴 */
+        .timeline { position: relative; padding-left: 30px; border-left: 2px solid rgba(0, 243, 255, 0.4); }
+        .timeline-item { position: relative; margin-bottom: 35px; }
+        .timeline-item::before {
+            content: ''; position: absolute; left: -37px; top: 5px;
+            width: 12px; height: 12px; background: #010302;
+            border: 2px solid var(--neon-cyan);
+            box-shadow: 0 0 15px var(--neon-cyan);
+            transform: rotate(45deg);
+        }
+        .exp-date { font-family: 'Orbitron', sans-serif; font-size: 0.85rem; color: var(--neon-green); margin-bottom: 5px; letter-spacing: 1px; }
+        .exp-title { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+        .exp-company { font-size: 1rem; color: var(--neon-cyan); margin-bottom: 12px; font-weight: 500; }
+        .exp-details { list-style: none; }
+        .exp-details li { position: relative; padding-left: 20px; margin-bottom: 8px; font-size: 0.95rem; color: var(--text-main); }
+        .exp-details li::before { content: '◈'; position: absolute; left: 0; color: var(--neon-green); font-size: 0.8rem; }
+        .exp-details strong { color: var(--neon-cyan); font-weight: 500; }
+
+        /* 动画 */
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-40px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 65, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 255, 65, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 65, 0); } }
+        @keyframes glitch {
+            0% { clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%); transform: translate(0); }
+            20% { clip-path: polygon(0 60%, 100% 60%, 100% 100%, 0 100%); transform: translate(-2px, 2px); }
+            40% { clip-path: polygon(0 20%, 100% 20%, 100% 30%, 0 30%); transform: translate(2px, -2px); }
+            60% { clip-path: polygon(0 80%, 100% 80%, 100% 90%, 0 90%); transform: translate(-1px, 1px); }
+            80% { clip-path: polygon(0 10%, 100% 10%, 100% 20%, 0 20%); transform: translate(1px, -1px); }
+            100% { clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%); transform: translate(0); }
+        }
+        .reveal { opacity: 0; transform: translateY(40px); transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+
+        @media (max-width: 900px) {
+            .grid-layout { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 3rem; }
+            .status-bar { flex-direction: column; gap: 10px; text-align: left; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="cursor-glow" id="cursorGlow"></div>
+    <canvas id="webgl-canvas"></canvas>
+
+    <div class="container">
+        <header class="hero">
+            <h1>WANG XU</h1>
+            <div class="subtitle">技术支持 / 实施 / AI 应用工程师</div>
+            <div class="status-bar">
+                <div class="status-item"><span class="status-dot"></span> SYSTEM ONLINE</div>
+                <div class="status-item">📞 15696154562</div>
+                <div class="status-item">✉️ 532186704@qq.com</div>
+                <div class="status-item">📍 重庆 · 两江新区</div>
+            </div>
+        </header>
+
+        <div class="grid-layout">
+            <div class="sidebar">
+                <div class="cyber-card reveal">
+                    <h2 class="card-title">个人档案 / PROFILE</h2>
+                    <ul class="info-list">
+                        <li><span class="info-label">姓名</span><span class="info-value">王旭</span></li>
+                        <li><span class="info-label">出生年月</span><span class="info-value">1992.10</span></li>
+                        <li><span class="info-label">政治面貌</span><span class="info-value">群众</span></li>
+                        <li><span class="info-label">身高</span><span class="info-value">178cm</span></li>
+                        <li><span class="info-label">学历</span><span class="info-value">专科（北京师范大学 · 计算机）</span></li>
+                    </ul>
+                </div>
+
+                <div class="cyber-card reveal">
+                    <h2 class="card-title">技能矩阵 / SKILLS</h2>
+                    <div class="skills-grid">
+                        <div class="skill-item">C#</div>
+                        <div class="skill-item">WebServices</div>
+                        <div class="skill-item">Restful API</div>
+                        <div class="skill-item">Oracle</div>
+                        <div class="skill-item">复杂SQL</div>
+                        <div class="skill-item">性能调优</div>
+                        <div class="skill-item">医保接口</div>
+                        <div class="skill-item">电子发票</div>
+                        <div class="skill-item">银医支付</div>
+                        <div class="skill-item">DRG系统</div>
+                        <div class="skill-item">Agent开发</div>
+                        <div class="skill-item">RAG技术</div>
+                        <div class="skill-item">系统运维</div>
+                    </div>
+                </div>
+
+                <div class="cyber-card reveal">
+                    <h2 class="card-title">自我评价 / EVAL</h2>
+                    <ul class="exp-details">
+                        <li>10 年以上医疗信息化行业经验，熟悉医院业务流程和医保政策。</li>
+                        <li>具备扎实的后端开发和接口对接能力，能独立承担项目开发和维护工作。</li>
+                        <li>对新技术保持热情，主动学习 AI 辅助开发和 RAG 等技术，并应用于实际工作提升效率。</li>
+                        <li>工作认真负责，具备良好的沟通能力和团队协作精神。</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="main-content">
+                <div class="cyber-card reveal">
+                    <h2 class="card-title">工作经历 / EXPERIENCE</h2>
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="exp-date">2014.10 — 至今</div>
+                            <div class="exp-title">技术支持工程师</div>
+                            <div class="exp-company">中联信息产业有限责任公司</div>
+                            <ul class="exp-details">
+                                <li><strong>国家医保平台接口：</strong>负责国家医保平台与医院信息系统的接口开发与维护，完成医保结算、报销、信息查询等核心业务接口对接，保障接口稳定运行，支撑多家公司医院日常医保业务。</li>
+                                <li><strong>医院电子发票接口：</strong>负责医院电子发票系统与税务平台的接口开发，实现开票开具、查询、红冲等全流程功能，确保发票数据准确、合规，满足税务监管要求。</li>
+                                <li><strong>三方银医接口：</strong>负责医院与银行系统的支付接口开发，实现挂号缴费、住院预交金、退款等资金流转功能，保障交易数据安全、准确，日均处理大量交易。</li>
+                                <li><strong>三方 DRG 接口：</strong>负责医院信息系统与国家 DRG 平台的对接，实现病历编码、费用分解、分组数据上报等功能，支撑医院 DRG 付费改革相关工作。</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="timeline-item">
+                            <div class="exp-date">2014.07 — 2014.10</div>
+                            <div class="exp-title">实施工程师</div>
+                            <div class="exp-company">中联信息产业有限责任公司</div>
+                            <ul class="exp-details">
+                                <li>负责项目现场实施，初步了解医疗业务和公司软件的使用方式。</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // Three.js 代码雨粒子系统 (Matrix Code Rain)
+        // ==========================================
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x010302, 0.003); // 深绿色迷雾
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 100;
+
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('webgl-canvas'), alpha: true, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        // 1. 动态生成代码字符纹理
+        function createCharacterTexture(char) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            
+            // 背景透明
+            ctx.clearRect(0, 0, 64, 64);
+            
+            // 绘制字符
+            ctx.fillStyle = '#00ff41'; // 黑客帝国绿
+            ctx.font = 'bold 48px "Courier New", monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(char, 32, 32);
+            
+            // 添加发光效果
+            ctx.shadowColor = '#00ff41';
+            ctx.shadowBlur = 10;
+            ctx.fillText(char, 32, 32);
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // 2. 初始化粒子数据
+        const particleCount = 2500;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const speeds = []; // 存储每个粒子的下落速度
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789{}[]()<>+-*/='.split('');
+        
+        // 为了性能，我们为每个字符生成纹理并缓存
+        const textures = chars.map(c => createCharacterTexture(c));
+
+        // 3. 使用 Points 渲染粒子 (这里用 Points 配合贴图来模拟大量 Sprite，性能更好)
+        // 但由于 Points 只能使用一个材质，我们使用 MultiMaterial 或者按颜色分组
+        // 为了简化且保证颜色统一，我们直接用 PointsMaterial 并且所有粒子用同一个字符纹理？
+        // 不行，代码雨需要不同字符。这里我们用 InstancedMesh 或者多个 Points。
+        // 最简单高效的方式：使用 THREE.Points + 一个包含多种字符的纹理图集，或者直接用 Sprite。
+        // 但 Sprites 数量多时性能差。我们采用另一种 Three.js 技巧：用 BufferGeometry 和自定义着色器。
+        // 为了代码简洁且效果出众，这里我们使用 Points 配合一个包含随机字符的 Canvas 纹理贴图集。
+        // 或者简化：直接使用 Points，把字符画在 Canvas 上，让粒子看起来像代码块。
+        
+        // 为了确保代码能直接运行且效果炸裂，我们采用为每个粒子分配一个 Sprite 的方式（数量控制在 2000 左右，现代 GPU 完全可以承受）。
+        const particleGroup = new THREE.Group();
+        
+        for (let i = 0; i < particleCount; i++) {
+            const char = chars[Math.floor(Math.random() * chars.length)];
+            const texture = textures[chars.indexOf(char)];
+            
+            const material = new THREE.SpriteMaterial({ 
+                map: texture, 
+                transparent: true, 
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                opacity: Math.random() * 0.5 + 0.3 // 随机透明度
+            });
+            
+            const sprite = new THREE.Sprite(material);
+            
+            // 随机位置 (X, Y, Z)
+            sprite.position.x = (Math.random() - 0.5) * 300;
+            sprite.position.y = (Math.random() - 0.5) * 200;
+            sprite.position.z = (Math.random() - 0.5) * 200;
+            
+            // 随机大小
+            const scale = Math.random() * 2 + 1;
+            sprite.scale.set(scale, scale, 1);
+            
+            // 存储速度，Y 轴下落
+            speeds.push({
+                y: Math.random() * 0.5 + 0.2,
+                originalOpacity: material.opacity
+            });
+            
+            particleGroup.add(sprite);
+        }
+        
+        scene.add(particleGroup);
+
+        // 4. 鼠标交互
+        let mouseX = 0;
+        let mouseY = 0;
+        let targetX = 0;
+        let targetY = 0;
+
+        document.addEventListener('mousemove', (event) => {
+            mouseX = (event.clientX - window.innerWidth / 2) * 0.001;
+            mouseY = (event.clientY - window.innerHeight / 2) * 0.001;
+
+            const glow = document.getElementById('cursorGlow');
+            glow.style.left = event.clientX + 'px';
+            glow.style.top = event.clientY + 'px';
+        });
+
+        // 5. 动画循环
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const elapsedTime = clock.getElapsedTime();
+
+            // 相机平滑跟随鼠标
+            targetX += (mouseX - targetX) * 0.05;
+            targetY += (mouseY - targetY) * 0.05;
+            camera.position.x = targetX * 100;
+            camera.position.y = -targetY * 100;
+            camera.lookAt(scene.position);
+
+            // 更新粒子位置 (下落)
+            const children = particleGroup.children;
+            for (let i = 0; i < children.length; i++) {
+                const sprite = children[i];
+                
+                // Y 轴下落
+                sprite.position.y -= speeds[i].y;
+                
+                // 随机闪烁效果
+                if (Math.random() > 0.98) {
+                    sprite.material.opacity = Math.random() * 0.8 + 0.2;
+                } else if (Math.random() > 0.95) {
+                    sprite.material.opacity = speeds[i].originalOpacity;
+                }
+
+                // 如果掉出屏幕底部，重置到顶部
+                if (sprite.position.y < -120) {
+                    sprite.position.y = 120;
+                    sprite.position.x = (Math.random() - 0.5) * 300;
+                    sprite.position.z = (Math.random() - 0.5) * 200;
+                    
+                    // 重新分配一个随机字符
+                    const newChar = chars[Math.floor(Math.random() * chars.length)];
+                    sprite.material.map = textures[chars.indexOf(newChar)];
+                    sprite.material.needsUpdate = true;
+                }
+            }
+            
+            // 整体轻微旋转，增加空间感
+            particleGroup.rotation.y = Math.sin(elapsedTime * 0.1) * 0.1;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // 6. 响应式
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 7. 滚动显现动画
+        const revealElements = document.querySelectorAll('.reveal');
+        const revealObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1, rootMargin: "0px 0px -50px 0px" });
+
+        revealElements.forEach(el => revealObserver.observe(el));
+    </script>
+</body>
+</html>
